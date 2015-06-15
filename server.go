@@ -12,6 +12,7 @@ import (
     // "html/template"
         "log"
     "time"
+    "golang.org/x/crypto/bcrypt"
 )
 type User struct {
     Id      int64 `db:"id"`
@@ -86,12 +87,21 @@ func main() {
     dbmap := initDb()
     defer dbmap.Db.Close()
  m.Post("/signup", binding.Bind(SignupForm{}), func(signupForm SignupForm, r render.Render) {
-
-        u1 := newUser(signupForm.Email, signupForm.Password1)
+    if signupForm.Password1 != signupForm.Password2 {
+        panic("two password should be matched")
+    }
+    password :=  []byte(signupForm.Password1)
+    // Hashing the password with the cost of 10
+    hashedPassword, err := bcrypt.GenerateFromPassword(password, 10)
+    if err != nil {
+        panic(err)
+    }
+   
+        u1 := newUser(signupForm.Email, string(hashedPassword))
         
         log.Println(u1)
 
-        err := dbmap.Insert(&u1)
+        err = dbmap.Insert(&u1)
         checkErr(err, "Insert failed")
         
         newmap := map[string]interface{}{"metatitle": "created user", "user": u1}
