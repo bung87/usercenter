@@ -44,6 +44,7 @@
               <input class="sumbit" name="commit" type="submit" value="Create Account" />
               <span class="simform__actions-sidetext">By creating an account you agree to our <a class="special" href="#" target="_blank" role="link">Terms & Privacy</a></span>
             </div> 
+             <input type="hidden" name="_csrf" value="{{.}}">
           </form>
         </div> 
         <div class="logmod__alter">
@@ -91,6 +92,7 @@
               <input class="sumbit" name="commit" type="submit" value="Log In" />
               <span class="simform__actions-sidetext"><a class="special" role="link" href="#">Forgot your password?<br>Click here</a></span>
             </div> 
+             <input type="hidden" name="_csrf" value="{{.}}">
           </form>
         </div> 
         <div class="logmod__alter">

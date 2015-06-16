@@ -5,16 +5,18 @@ import (
 	"database/sql"
 	"github.com/coopernurse/gorp"
 	"github.com/go-martini/martini"
+    "github.com/martini-contrib/csrf"
      "github.com/martini-contrib/render"
      "github.com/martini-contrib/binding"
         "github.com/martini-contrib/sessionauth"
     "github.com/martini-contrib/sessions"
     // "fmt"
     _ "github.com/go-sql-driver/mysql"
-    // "html/template"
+    "html/template"
         "log"
     "time"
     "golang.org/x/crypto/bcrypt"
+    // "net/http"
 )
 
 var dbmap *gorp.DbMap
@@ -128,12 +130,24 @@ func checkErr(err error, msg string) {
         log.Fatalln(msg, err)
     }
 }
+func csrfToken() string {
+                    return ""
+                }
+var funcMap = template.FuncMap{
+         "csrfToken" :csrfToken,
+        
+}
+
 
 func main() {
   m := martini.Classic()
-  m.Use(render.Renderer())
+  m.Use(render.Renderer(render.Options{
+     Funcs: []template.FuncMap{
+        funcMap,
+     },
+    }))
    // initialize the DbMap
-    dbmap := initDb()
+    dbmap = initDb()
     defer dbmap.Db.Close()
     store := sessions.NewCookieStore([]byte("secret123"))
     // Default our store to use Session cookies, so we don't leave logged in
@@ -143,9 +157,24 @@ func main() {
     })
     m.Use(sessions.Sessions("my_session", store))
     m.Use(sessionauth.SessionUser(GenerateAnonymousUser))
+
     sessionauth.RedirectUrl = "/new-login"
     sessionauth.RedirectParam = "new-next"
- m.Post("/signup", binding.Bind(SignupForm{}), func(signupForm SignupForm, r render.Render) {
+     m.Use(csrf.Generate(&csrf.Options{
+        Secret:     "token123",
+        SessionKey: "userID",
+        // SetHeader:true,
+        // SetCookie:true,
+        // Custom error response.
+        ErrorFunc: func(w http.ResponseWriter) {
+            http.Error(w, "CSRF token validation failed", http.StatusBadRequest)
+        },
+    }))
+     // m.Use(func(s sessions.Session,res http.ResponseWriter, req *http.Request) {
+     //    s.Set("userID", "123456")
+     //    })
+
+ m.Post("/signup", csrf.Validate, binding.Bind(SignupForm{}), func(signupForm SignupForm, r render.Render) {
     if signupForm.Password1 != signupForm.Password2 {
         panic("two password should be matched")
     }
@@ -167,11 +196,14 @@ func main() {
         r.HTML(200, "user", newmap)
     })
 
- m.Get("/login",func( r render.Render){
+ m.Get("/login",func( s sessions.Session,r render.Render, x csrf.CSRF){
+    // 
+
+     log.Println(x.GetToken())
      // err = bcrypt.CompareHashAndPassword(hashedPassword, password)
- 	r.HTML(200, "login","233")
+ 	r.HTML(200, "login",x.GetToken())
  	})
- m.Post("/login",binding.Bind(LoginForm{}), func(session sessions.Session, loginForm LoginForm, r render.Render,req *http.Request){
+ m.Post("/login", csrf.Validate,binding.Bind(LoginForm{}), func(session sessions.Session, loginForm LoginForm, r render.Render,req *http.Request){
     user := User{
         Email:loginForm.Email,
     }
