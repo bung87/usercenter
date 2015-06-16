@@ -7,6 +7,8 @@ import (
 	"github.com/go-martini/martini"
      "github.com/martini-contrib/render"
      "github.com/martini-contrib/binding"
+        "github.com/martini-contrib/sessionauth"
+    "github.com/martini-contrib/sessions"
     // "fmt"
     _ "github.com/go-sql-driver/mysql"
     // "html/template"
@@ -14,6 +16,9 @@ import (
     "time"
     "golang.org/x/crypto/bcrypt"
 )
+
+var dbmap *gorp.DbMap
+
 type User struct {
     Id      int64 `db:"id"`
     Created int64
@@ -24,10 +29,54 @@ type User struct {
     FirstName    string `form:"FirstName"`
     LastName    string `form:"LastName"`
     NickName    string `form:"NickName"`
+    authenticated bool   `form:"-" db:"-"`
 }
+func (u *User) UniqueId() interface{} {
+    return u.Id
+}
+
+// GetById will populate a user object from a database model with
+// a matching id.
+func (u *User) GetById(id interface{}) error {
+    err := dbmap.SelectOne(u, "SELECT * FROM users WHERE id = ?", id)
+    if err != nil {
+        return err
+    }
+
+    return nil
+}
+func GenerateAnonymousUser() sessionauth.User {
+    return &User{}
+}
+// Login will preform any actions that are required to make a user model
+// officially authenticated.
+func (u *User) Login() {
+    // Update last login time
+    // Add to logged-in user's list
+    // etc ...
+    u.authenticated = true
+}
+
+// Logout will preform any actions that are required to completely
+// logout a user.
+func (u *User) Logout() {
+    // Remove from logged-in user's list
+    // etc ...
+    u.authenticated = false
+}
+
+func (u *User) IsAuthenticated() bool {
+    return u.authenticated
+}
+
 type SignupForm struct{
-	Password1 string `form:"Password" binding:"required"`
-	Password2 string `form:"Password" binding:"required"`
+	Password1 string `form:"Password1" binding:"required"`
+	Password2 string `form:"Password2" binding:"required"`
+    Email   string `form:"Email" binding:"required"`
+}
+
+type LoginForm struct{
+    Password string `form:"Password" binding:"required"`
     Email   string `form:"Email" binding:"required"`
 }
 func (cf SignupForm) Validate(errors binding.Errors, req *http.Request) binding.Errors {
@@ -60,7 +109,7 @@ func initDb() *gorp.DbMap {
 
     // construct a gorp DbMap
     // dbmap := &gorp.DbMap{Db: db, Dialect: gorp.SqliteDialect{}}
-    dbmap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
+    dbmap = &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
 
     // add a table, setting the table name to 'posts' and
     // specifying that the Id property is an auto incrementing PK
@@ -86,6 +135,16 @@ func main() {
    // initialize the DbMap
     dbmap := initDb()
     defer dbmap.Db.Close()
+    store := sessions.NewCookieStore([]byte("secret123"))
+    // Default our store to use Session cookies, so we don't leave logged in
+    // users roaming around
+    store.Options(sessions.Options{
+        MaxAge: 0,
+    })
+    m.Use(sessions.Sessions("my_session", store))
+    m.Use(sessionauth.SessionUser(GenerateAnonymousUser))
+    sessionauth.RedirectUrl = "/new-login"
+    sessionauth.RedirectParam = "new-next"
  m.Post("/signup", binding.Bind(SignupForm{}), func(signupForm SignupForm, r render.Render) {
     if signupForm.Password1 != signupForm.Password2 {
         panic("two password should be matched")
@@ -108,9 +167,34 @@ func main() {
         r.HTML(200, "user", newmap)
     })
 
- m.Get("/login",binding.Bind(User{}),func(user User, r render.Render){
+ m.Get("/login",func( r render.Render){
+     // err = bcrypt.CompareHashAndPassword(hashedPassword, password)
  	r.HTML(200, "login","233")
  	})
+ m.Post("/login",binding.Bind(LoginForm{}), func(session sessions.Session, loginForm LoginForm, r render.Render,req *http.Request){
+    user := User{
+        Email:loginForm.Email,
+    }
+     err := dbmap.SelectOne(&user, "select * from users where email=?", user.Email)
+    checkErr(err, "SelectOne failed")
+    if err != nil {
+            r.Redirect(sessionauth.RedirectUrl)
+            return
+        } 
+    hashedPassword := []byte(user.Password)
+    password := []byte(loginForm.Password)
+    err = bcrypt.CompareHashAndPassword(hashedPassword, password)
+    checkErr(err, "Password match failed")
+    err = sessionauth.AuthenticateSession(session, &user)
+            if err != nil {
+                r.JSON(500, err)
+            }
+            params := req.URL.Query()
+            redirect := params.Get(sessionauth.RedirectParam)
+            r.Redirect(redirect)
+            return
+    r.HTML(200,"success","")
+    })
   m.Get("/", func(r render.Render)  {
       r.HTML(200, "hello", "jeremy")
   })
