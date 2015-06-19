@@ -3,13 +3,11 @@ package models
 import (
 "time"
 "github.com/martini-contrib/sessionauth"
+// "log"
+"reflect"
+"fmt"
 )
- var db, err = initDB()
-    if err != nil {
-        panic(err)
-    }
-    db.InitSchema()
-    db.Db.Close()
+    
 
 type User struct {
     Id      int64 `db:"id"`
@@ -41,7 +39,8 @@ func (u *User) UniqueId() interface{} {
 // GetById will populate a user object from a database model with
 // a matching id.
 func (u *User) GetById(id interface{}) error {
-    err := db.Db.SelectOne(u, "SELECT * FROM users WHERE id = ?", id)
+    // log.Println( DbMap)
+    err := &DbMap.SelectOne(u, "SELECT * FROM users WHERE id = ?", id)
     if err != nil {
         return err
     }
