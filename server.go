@@ -2,12 +2,12 @@ package main
 
 import (
     "net/http"
-	"database/sql"
-	"github.com/coopernurse/gorp"
+	// "database/sql"
+	// "github.com/coopernurse/gorp"
 	"github.com/go-martini/martini"
     "github.com/martini-contrib/csrf"
      "github.com/martini-contrib/render"
-   
+   "github.com/bung87/usercenter/settings"
         "github.com/martini-contrib/sessionauth"
     "github.com/martini-contrib/sessions"
     "github.com/bung87/usercenter/models"
@@ -16,7 +16,8 @@ import (
     _ "github.com/go-sql-driver/mysql"
     "html/template"
         "log"
-    "time"
+    // "time"
+          "github.com/martini-contrib/binding"
     "golang.org/x/crypto/bcrypt"
     // "net/http"
 )
@@ -27,13 +28,13 @@ import (
 
 func DB() martini.Handler {
     return func(c martini.Context) {
-        /*db, err := initDB()
+        db ,err := models.InitDB(settings.Driver,settings.Source,settings.Dialect)
         if err != nil {
             panic(err)
         }
         defer db.Db.Close()
-        c.Map(db)*/
-        c.Map(models.DbMap)
+        c.Map(db)
+        // c.Map(models.DbMap)
         c.Next()
     }
 }
@@ -54,7 +55,6 @@ var funcMap = template.FuncMap{
         
 }
 
-
 func main() {
   m := martini.Classic()
   m.Use(render.Renderer(render.Options{
@@ -62,12 +62,12 @@ func main() {
         funcMap,
      },
     }))
-    // db, err := initDB()
-    // if err != nil {
-    //     panic(err)
-    // }
-    // db.InitSchema()
-    // db.Db.Close()
+    db ,err := models.InitDB(settings.Driver,settings.Source,settings.Dialect)
+    if err != nil {
+        panic(err)
+    }
+    db.InitSchema()
+    db.Db.Close()
     m.Use(DB())
     store := sessions.NewCookieStore([]byte("secret123"))
     // Default our store to use Session cookies, so we don't leave logged in
@@ -76,25 +76,25 @@ func main() {
         MaxAge: 0,
     })
     m.Use(sessions.Sessions("my_session", store))
-    m.Use(sessionauth.SessionUser(GenerateAnonymousUser))
+    m.Use(sessionauth.SessionUser(models.GenerateAnonymousUser))
 
     sessionauth.RedirectUrl = "/new-login"
     sessionauth.RedirectParam = "new-next"
      m.Use(csrf.Generate(&csrf.Options{
         Secret:     "token123",
         SessionKey: "userID",
-        // SetHeader:true,
-        // SetCookie:true,
+        SetHeader:true,
+        SetCookie:true,
         // Custom error response.
         ErrorFunc: func(w http.ResponseWriter) {
             http.Error(w, "CSRF token validation failed", http.StatusBadRequest)
         },
     }))
-     // m.Use(func(s sessions.Session,res http.ResponseWriter, req *http.Request) {
-     //    s.Set("userID", "123456")
-     //    })
+     m.Use(func(s sessions.Session,res http.ResponseWriter, req *http.Request) {
+        s.Set("userID", "123456")
+        })
 
- m.Post("/signup", csrf.Validate, binding.Bind(forms.SignupForm{}), func(signupForm forms.SignupForm, r render.Render) {
+ m.Post("/signup", csrf.Validate, binding.Bind(forms.SignupForm{}), func(signupForm forms.SignupForm, r render.Render,db *models.DB) {
     if signupForm.Password1 != signupForm.Password2 {
         panic("two password should be matched")
     }
@@ -105,11 +105,11 @@ func main() {
         panic(err)
     }
    
-        u1 := newUser(signupForm.Email, string(hashedPassword))
+        u1 := models.NewUser(signupForm.Email, string(hashedPassword))
         
         log.Println(u1)
 
-        err = dbmap.Insert(&u1)
+        err = db.Insert(&u1)
         checkErr(err, "Insert failed")
         
         newmap := map[string]interface{}{"metatitle": "created user", "user": u1}
@@ -123,11 +123,11 @@ func main() {
      // err = bcrypt.CompareHashAndPassword(hashedPassword, password)
  	r.HTML(200, "login",x.GetToken())
  	})
- m.Post("/login", csrf.Validate,binding.Bind(forms.LoginForm{}), func(session sessions.Session, loginForm forms.LoginForm, r render.Render,req *http.Request){
-    user := User{
+ m.Post("/login", csrf.Validate,binding.Bind(forms.LoginForm{}), func(session sessions.Session, loginForm forms.LoginForm, r render.Render,req *http.Request,db *models.DB){
+    user := models.User{
         Email:loginForm.Email,
     }
-     err := dbmap.SelectOne(&user, "select * from users where email=?", user.Email)
+     err := db.SelectOne(&user, "select * from users where email=?", user.Email)
     checkErr(err, "SelectOne failed")
     if err != nil {
             r.Redirect(sessionauth.RedirectUrl)
