@@ -4,6 +4,8 @@ import (
 "time"
 "github.com/martini-contrib/sessionauth"
 "github.com/bung87/usercenter/settings"
+"github.com/wayn3h0/go-uuid/random"
+"golang.org/x/crypto/bcrypt"
 // "log"
 // "reflect"
 // "fmt"
@@ -21,6 +23,86 @@ type User struct {
     LastName    string `form:"LastName"`
     NickName    string `form:"NickName"`
     authenticated bool   `form:"-" db:"-"`
+    IsActive bool
+}
+
+type Registration struct {
+    Id      int64 `db:"id"`
+    Created int64
+    ActivationCode string
+    Uid int64 
+}
+
+type PasswordReset struct {
+    Id      int64 `db:"id"`
+    Created int64
+    ResetCode string
+    Uid int64 
+}
+
+func NewPasswordReset(uid int64) PasswordReset{
+    now := time.Now().Unix()
+    code, _:=random.New() 
+    return PasswordReset{
+        Created: now,
+        ResetCode: string(code),
+     
+        Uid:uid,
+    }
+}
+func (r *PasswordReset) Reset(password string) error{
+    db ,err := InitDB(settings.Driver,settings.Source,settings.Dialect)
+    if err != nil {
+        return err
+    }
+    defer db.Db.Close()
+    u := User{}
+    err = db.SelectOne(&u, "SELECT * FROM users WHERE id = ?", r.Uid)
+    if err != nil {
+        return err
+    }
+    passwordBytes:=[]byte(password)
+    hashedPassword, err := bcrypt.GenerateFromPassword(passwordBytes, 10)
+    u.Password =string(hashedPassword)
+    _, err1 := db.Update(u)
+    if err1 != nil {
+        return err1
+    }
+
+    return nil
+   
+}
+
+func (r *Registration) Active() error{
+    db ,err := InitDB(settings.Driver,settings.Source,settings.Dialect)
+    if err != nil {
+        return err
+    }
+    defer db.Db.Close()
+    u := User{}
+    err = db.SelectOne(&u, "SELECT * FROM users WHERE id = ?", r.Uid)
+    if err != nil {
+        return err
+    }
+
+    u.IsActive = true
+    _, err1 := db.Update(u)
+    if err1 != nil {
+        return err1
+    }
+
+    return nil
+   
+}
+
+func NewRegistration(uid int64) Registration{
+    now := time.Now().Unix()
+    code, _:=random.New() 
+    return Registration{
+        Created: now,
+        ActivationCode: string(code),
+        Uid:uid,
+    }
 }
 func (u *User) GetById(id interface{}) error {
     db ,err := InitDB(settings.Driver,settings.Source,settings.Dialect)
