@@ -1,7 +1,15 @@
 html {
   box-sizing: border-box;
 }
-
+input{
+  border: 0;
+  border-bottom: 1px solid #ccc;
+  border-radius: 0;
+  outline: 0;
+}
+input:focus{
+  border-color: #669;
+}
 *, *:before, *:after {
   box-sizing: inherit;
 }
@@ -226,7 +234,7 @@ html {
 }
 
 .sminputs {
-  border-bottom: 1px solid #E5E5E5;
+  /*border-bottom: 1px solid #E5E5E5;*/
 }
 .sminputs::after {
   clear: both;
@@ -239,7 +247,7 @@ html {
   width: 50%;
   height: 71px;
   padding: 11px 24px;
-  border-right: 1px solid #e5e5e5;
+  /*border-right: 1px solid #e5e5e5;*/
   border-bottom: none;
   float: left;
   background-color: #FFF;
@@ -278,15 +286,15 @@ html {
   font-size: 15px;
   line-height: 19.2px;
   color: #555;
-  border-radius: 4px;
+  /*border-radius: 4px;*/
   vertical-align: middle;
   box-shadow: none;
   box-sizing: border-box;
   width: 100%;
   height: auto;
-  border: none;
+  /*border: none;*/
   padding: 0;
-  cursor: pointer;
+  /*cursor: pointer;*/
   background-color: transparent;
   color: rgba(75, 89, 102, 0.85);
 }

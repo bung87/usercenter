@@ -1,30 +1,24 @@
 package main
 
 import (
-    "net/http"
-	// "database/sql"
-	// "github.com/coopernurse/gorp"
-	"github.com/go-martini/martini"
-    "github.com/martini-contrib/csrf"
-     "github.com/martini-contrib/render"
-   "github.com/bung87/usercenter/settings"
-        "github.com/martini-contrib/sessionauth"
-    "github.com/martini-contrib/sessions"
-    "github.com/bung87/usercenter/models"
-    "github.com/bung87/usercenter/forms"
-    "fmt"
-    _ "github.com/go-sql-driver/mysql"
-    "html/template"
-        "log"
-    // "time"
-        "github.com/dchest/captcha"
-          "github.com/martini-contrib/binding"
-    "golang.org/x/crypto/bcrypt"
-    // "bytes"
-    "io"
-    "image/jpeg"
+"net/http"
+"github.com/go-martini/martini"
+"github.com/martini-contrib/csrf"
+"github.com/martini-contrib/render"
+"github.com/bung87/usercenter/settings"
+"github.com/martini-contrib/sessionauth"
+"github.com/martini-contrib/sessions"
+"github.com/bung87/usercenter/models"
+"github.com/bung87/usercenter/forms"
+"fmt"
+_ "github.com/go-sql-driver/mysql"
+"log"
+"github.com/dchest/captcha"
+"github.com/martini-contrib/binding"
+"golang.org/x/crypto/bcrypt"
+"io"
+"image/jpeg"
 )
-
 
 const (
     CAPTCHA_LENGTH  = 6
@@ -33,9 +27,6 @@ const (
     CAPTCHA_QUALITY = 90
 
 )
-/*func initDB() (*models.DB, error) {
-    return models.InitDB("mysql", "go:go@/go", gorp.SqliteDialect{})
-}*/
 
 func DB() martini.Handler {
     return func(c martini.Context) {
@@ -58,55 +49,51 @@ func checkErr(err error, msg string) {
         log.Fatalln(msg, err)
     }
 }
-func csrfToken() string {
-                    return ""
-                }
-var funcMap = template.FuncMap{
-         "csrfToken" :csrfToken,
-        
-}
+/*var funcMap = template.FuncMap{
+ "csrfToken" :csrfToken,
+}*/
 
 func main() {
   m := martini.Classic()
-  m.Use(render.Renderer(render.Options{
+ m.Use(render.Renderer(/*render.Options{
      Funcs: []template.FuncMap{
         funcMap,
-     },
-    }))
-    db ,err := models.InitDB(settings.Driver,settings.Source,settings.Dialect)
-    if err != nil {
-        panic(err)
-    }
-    db.InitSchema()
-    db.Db.Close()
-    m.Use(DB())
-    store := sessions.NewCookieStore([]byte("secret123"))
+        },
+        }*/))
+  db ,err := models.InitDB(settings.Driver,settings.Source,settings.Dialect)
+  if err != nil {
+    panic(err)
+}
+db.InitSchema()
+db.Db.Close()
+m.Use(DB())
+store := sessions.NewCookieStore([]byte("secret123"))
     // Default our store to use Session cookies, so we don't leave logged in
     // users roaming around
-    store.Options(sessions.Options{
-        MaxAge: 0,
+store.Options(sessions.Options{
+    MaxAge: 0,
     })
-    m.Use(sessions.Sessions("my_session", store))
-    m.Use(sessionauth.SessionUser(models.GenerateAnonymousUser))
+m.Use(sessions.Sessions("my_session", store))
+m.Use(sessionauth.SessionUser(models.GenerateAnonymousUser))
 
-    sessionauth.RedirectUrl = "/new-login"
-    sessionauth.RedirectParam = "new-next"
-     m.Use(csrf.Generate(&csrf.Options{
-        Secret:     "token123",
-        SessionKey: "userID",
-        SetHeader:true,
-        SetCookie:true,
+sessionauth.RedirectUrl = "/new-login"
+sessionauth.RedirectParam = "new-next"
+m.Use(csrf.Generate(&csrf.Options{
+    Secret:     "token123",
+    SessionKey: "userID",
+    SetHeader:true,
+    SetCookie:true,
         // Custom error response.
-        ErrorFunc: func(w http.ResponseWriter) {
-            http.Error(w, "CSRF token validation failed", http.StatusBadRequest)
+    ErrorFunc: func(w http.ResponseWriter) {
+        http.Error(w, "CSRF token validation failed", http.StatusBadRequest)
         },
-    }))
-     m.Use(func(s sessions.Session,res http.ResponseWriter, req *http.Request) {
-        s.Set("userID", "123456")
-        })
+        }))
+m.Use(func(s sessions.Session,res http.ResponseWriter, req *http.Request) {
+    s.Set("userID", "123456")
+    })
 
- m.Post("/signup", csrf.Validate, binding.Bind(forms.SignupForm{}), func(res http.ResponseWriter, req *http.Request,signupForm forms.SignupForm, r render.Render,db *models.DB) {
-    
+m.Post("/signup", csrf.Validate, binding.Bind(forms.SignupForm{}), func(res http.ResponseWriter, req *http.Request,signupForm forms.SignupForm, r render.Render,db *models.DB) {
+
     if !captcha.VerifyString(req.FormValue("captchaId"), req.FormValue("captchaSolution")) {
         io.WriteString(res, "Wrong captcha solution! No robots allowed!\n")
     } else {
@@ -122,79 +109,73 @@ func main() {
     if err != nil {
         panic(err)
     }
-   
-        u1 := models.NewUser(signupForm.Email, string(hashedPassword))
-        
-        log.Println(u1)
 
-        err = db.Insert(&u1)
-        checkErr(err, "Insert failed")
-        
-        newmap := map[string]interface{}{"metatitle": "created user", "user": u1}
-        r.HTML(200, "user", newmap)
+    u1 := models.NewUser(signupForm.Email, string(hashedPassword))
+
+    log.Println(u1)
+
+    err = db.Insert(&u1)
+    checkErr(err, "Insert failed")
+
+    newmap := map[string]interface{}{"metatitle": "created user", "user": u1}
+    r.HTML(200, "user", newmap)
     })
 
- m.Get("/login",func( s sessions.Session,r render.Render, x csrf.CSRF){
-    // 
+m.Get("/login",func( s sessions.Session,r render.Render, x csrf.CSRF){
+
     d := struct {
         CaptchaId string
         Token string
-    }{  x.GetToken(),
-        captcha.New(),
-    }
-     log.Println(x.GetToken())
-     // err = bcrypt.CompareHashAndPassword(hashedPassword, password)
- 	r.HTML(200, "login",d)
- 	})
- m.Post("/login", csrf.Validate,binding.Bind(forms.LoginForm{}), func(session sessions.Session, loginForm forms.LoginForm, r render.Render,req *http.Request,db *models.DB){
+        }{  x.GetToken(),
+            captcha.New(),
+        }
+
+        r.HTML(200, "login",d)
+        })
+
+m.Post("/login", csrf.Validate,binding.Bind(forms.LoginForm{}), func(session sessions.Session, loginForm forms.LoginForm, r render.Render,req *http.Request,db *models.DB){
     user := models.User{
         Email:loginForm.Email,
     }
-     err := db.SelectOne(&user, "select * from users where email=?", user.Email)
+    err := db.SelectOne(&user, "select * from users where email=?", user.Email)
     checkErr(err, "SelectOne failed")
     if err != nil {
-            r.Redirect(sessionauth.RedirectUrl)
-            return
-        } 
+        r.Redirect(sessionauth.RedirectUrl)
+        return
+    } 
     hashedPassword := []byte(user.Password)
     password := []byte(loginForm.Password)
     err = bcrypt.CompareHashAndPassword(hashedPassword, password)
     checkErr(err, "Password match failed")
     err = sessionauth.AuthenticateSession(session, &user)
-            if err != nil {
-                r.JSON(500, err)
-            }
-            params := req.URL.Query()
-            redirect := params.Get(sessionauth.RedirectParam)
-            r.Redirect(redirect)
-            return
+    if err != nil {
+        r.JSON(500, err)
+    }
+    params := req.URL.Query()
+    redirect := params.Get(sessionauth.RedirectParam)
+    r.Redirect(redirect)
+    return
     r.HTML(200,"success","")
     })
-  m.Get("/", func(r render.Render)  {
-      r.HTML(200, "hello", "jeremy")
+
+m.Get("/", func(r render.Render)  {
+  r.HTML(200, "hello", "jeremy")
   })
-  m.Get("/captcha/:id", func (res http.ResponseWriter, req *http.Request) {
-      digits := captcha.RandomDigits(CAPTCHA_LENGTH)
+
+m.Get("/captcha/:id", func (res http.ResponseWriter, req *http.Request) {
+    digits := captcha.RandomDigits(CAPTCHA_LENGTH)
     value := ""
     for _, d := range digits {
         value += fmt.Sprintf("%v", d)
     }
     image := captcha.NewImage("", digits, CAPTCHA_WIDTH, CAPTCHA_HEIGHT)
-
-    // buf := new(bytes.Buffer)
     err := jpeg.Encode(res, image, &jpeg.Options{Quality: CAPTCHA_QUALITY})
-     if err != nil {
-            res.WriteHeader(500)
-        } else {
-            res.WriteHeader(200)
-        }
-  })
-  // http.Get("/", m)
-  // fmt.Println("Server started...")
+    if err != nil {
+        res.WriteHeader(500)
+    } else {
+        res.WriteHeader(200)
+    }
+})
 
-  //   err = http.ListenAndServe("127.0.0.1:3000", nil)
-  //   if err != nil {
-  //       fmt.Println(err)
-  //   }
-  m.Run()
+m.Run()
 }
