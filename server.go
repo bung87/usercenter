@@ -12,16 +12,27 @@ import (
     "github.com/martini-contrib/sessions"
     "github.com/bung87/usercenter/models"
     "github.com/bung87/usercenter/forms"
-    // "fmt"
+    "fmt"
     _ "github.com/go-sql-driver/mysql"
     "html/template"
         "log"
     // "time"
+        "github.com/dchest/captcha"
           "github.com/martini-contrib/binding"
     "golang.org/x/crypto/bcrypt"
-    // "net/http"
+    // "bytes"
+    "io"
+    "image/jpeg"
 )
 
+
+const (
+    CAPTCHA_LENGTH  = 6
+    CAPTCHA_WIDTH   = 180
+    CAPTCHA_HEIGHT  = 50
+    CAPTCHA_QUALITY = 90
+
+)
 /*func initDB() (*models.DB, error) {
     return models.InitDB("mysql", "go:go@/go", gorp.SqliteDialect{})
 }*/
@@ -94,7 +105,14 @@ func main() {
         s.Set("userID", "123456")
         })
 
- m.Post("/signup", csrf.Validate, binding.Bind(forms.SignupForm{}), func(signupForm forms.SignupForm, r render.Render,db *models.DB) {
+ m.Post("/signup", csrf.Validate, binding.Bind(forms.SignupForm{}), func(res http.ResponseWriter, req *http.Request,signupForm forms.SignupForm, r render.Render,db *models.DB) {
+    
+    if !captcha.VerifyString(req.FormValue("captchaId"), req.FormValue("captchaSolution")) {
+        io.WriteString(res, "Wrong captcha solution! No robots allowed!\n")
+    } else {
+        io.WriteString(res, "Great job, human! You solved the captcha.\n")
+    }
+
     if signupForm.Password1 != signupForm.Password2 {
         panic("two password should be matched")
     }
@@ -118,10 +136,15 @@ func main() {
 
  m.Get("/login",func( s sessions.Session,r render.Render, x csrf.CSRF){
     // 
-
+    d := struct {
+        CaptchaId string
+        Token string
+    }{  x.GetToken(),
+        captcha.New(),
+    }
      log.Println(x.GetToken())
      // err = bcrypt.CompareHashAndPassword(hashedPassword, password)
- 	r.HTML(200, "login",x.GetToken())
+ 	r.HTML(200, "login",d)
  	})
  m.Post("/login", csrf.Validate,binding.Bind(forms.LoginForm{}), func(session sessions.Session, loginForm forms.LoginForm, r render.Render,req *http.Request,db *models.DB){
     user := models.User{
@@ -150,5 +173,28 @@ func main() {
   m.Get("/", func(r render.Render)  {
       r.HTML(200, "hello", "jeremy")
   })
+  m.Get("/captcha/:id", func (res http.ResponseWriter, req *http.Request) {
+      digits := captcha.RandomDigits(CAPTCHA_LENGTH)
+    value := ""
+    for _, d := range digits {
+        value += fmt.Sprintf("%v", d)
+    }
+    image := captcha.NewImage("", digits, CAPTCHA_WIDTH, CAPTCHA_HEIGHT)
+
+    // buf := new(bytes.Buffer)
+    err := jpeg.Encode(res, image, &jpeg.Options{Quality: CAPTCHA_QUALITY})
+     if err != nil {
+            res.WriteHeader(500)
+        } else {
+            res.WriteHeader(200)
+        }
+  })
+  // http.Get("/", m)
+  // fmt.Println("Server started...")
+
+  //   err = http.ListenAndServe("127.0.0.1:3000", nil)
+  //   if err != nil {
+  //       fmt.Println(err)
+  //   }
   m.Run()
 }

@@ -40,11 +40,25 @@
                 <input class="string optional" name="Password2" maxlength="255" id="user-pw-repeat" placeholder="Repeat password" type="password" size="50" />
               </div>
             </div>
+            <div class="sminputs">
+              <div class="input string optional">
+                <a href="#" onclick="reload()">
+                <img id="image" src="/captcha/{{.CaptchaId}}.png" alt="Captcha image">
+              </a>
+              </div>
+              <div class="input string optional">
+                <label class="string optional" for="captchaSolution">Captcha Code*</label>
+                <input class="string optional" name="captchaSolution" placeholder="Captcha Code" />
+              </div>
+            
+            </div>
+            
             <div class="simform__actions">
               <input class="sumbit" name="commit" type="submit" value="Create Account" />
               <span class="simform__actions-sidetext">By creating an account you agree to our <a class="special" href="#" target="_blank" role="link">Terms & Privacy</a></span>
             </div> 
-             <input type="hidden" name="_csrf" value="{{.}}">
+             <input type="hidden" name="_csrf" value="{{.Token}}">
+             <input type=hidden name=captchaId value="{{.CaptchaId}}"><br>
           </form>
         </div> 
         <div class="logmod__alter">
