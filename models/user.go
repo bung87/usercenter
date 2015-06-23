@@ -61,9 +61,10 @@ func (r *PasswordReset) Reset(password string) error{
     if err != nil {
         return err
     }
-    passwordBytes:=[]byte(password)
-    hashedPassword, err := bcrypt.GenerateFromPassword(passwordBytes, 10)
-    u.Password =string(hashedPassword)
+    // passwordBytes:=[]byte(password)
+    // hashedPassword, err := bcrypt.GenerateFromPassword(passwordBytes, 10)
+    // u.Password =string(hashedPassword)
+    u.SetPassword(password)
     _, err1 := db.Update(u)
     if err1 != nil {
         return err1
@@ -118,11 +119,11 @@ func (u *User) GetById(id interface{}) error {
 
     return nil
 }
-func NewUser(email, password string) User {
+func NewUser(email string) User {
 	now := time.Now().Unix()
     return User{
         //Created: time.Now().UnixNano(),
-        Password:password,//need to be crypted
+      
         Created: now,
         LastLogin: now,
         Email: email,
@@ -132,6 +133,19 @@ func (u *User) UniqueId() interface{} {
     return u.Id
 }
 
+func (u *User) Authenticate(password string) error {
+    hashedPassword := []byte(u.Password)
+    passwordBytes := []byte(password)
+    return bcrypt.CompareHashAndPassword(hashedPassword, passwordBytes)
+}
+
+func (u *User) SetPassword(password string) {
+    passwordBytes :=  []byte(password)
+    // Hashing the password with the cost of 10
+    hashedPassword, _ := bcrypt.GenerateFromPassword(passwordBytes, 10)
+    u.Password = string(hashedPassword)
+     
+}
 // GetById will populate a user object from a database model with
 // a matching id.
 

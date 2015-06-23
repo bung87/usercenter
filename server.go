@@ -15,7 +15,7 @@ _ "github.com/go-sql-driver/mysql"
 "log"
 "github.com/dchest/captcha"
 "github.com/martini-contrib/binding"
-"golang.org/x/crypto/bcrypt"
+
 "io"
 "image/jpeg"
 )
@@ -92,7 +92,7 @@ m.Use(func(s sessions.Session,res http.ResponseWriter, req *http.Request) {
     s.Set("userID", "123456")
     })
 
-m.Post("/signup", csrf.Validate, binding.Bind(forms.SignupForm{}), func(res http.ResponseWriter, req *http.Request,signupForm forms.SignupForm, r render.Render,db *models.DB) {
+m.Post("/signup", csrf.Validate, binding.Bind(forms.SignupForm{}), func(user sessionauth.User,res http.ResponseWriter, req *http.Request,signupForm forms.SignupForm, r render.Render,db *models.DB) {
 
     if !captcha.VerifyString(req.FormValue("captchaId"), req.FormValue("captchaSolution")) {
         io.WriteString(res, "Wrong captcha solution! No robots allowed!\n")
@@ -103,14 +103,15 @@ m.Post("/signup", csrf.Validate, binding.Bind(forms.SignupForm{}), func(res http
     if signupForm.Password1 != signupForm.Password2 {
         panic("two password should be matched")
     }
-    password :=  []byte(signupForm.Password1)
+    // password :=  []byte(signupForm.Password1)
     // Hashing the password with the cost of 10
-    hashedPassword, err := bcrypt.GenerateFromPassword(password, 10)
+    // hashedPassword, err := bcrypt.GenerateFromPassword(password, 10)
+    // user.(*models.User)
     if err != nil {
         panic(err)
     }
 
-    u1 := models.NewUser(signupForm.Email, string(hashedPassword))
+    u1 := models.NewUser(signupForm.Email)
 
     log.Println(u1)
 
@@ -143,9 +144,10 @@ m.Post("/login", csrf.Validate,binding.Bind(forms.LoginForm{}), func(session ses
         r.Redirect(sessionauth.RedirectUrl)
         return
     } 
-    hashedPassword := []byte(user.Password)
-    password := []byte(loginForm.Password)
-    err = bcrypt.CompareHashAndPassword(hashedPassword, password)
+    // hashedPassword := []byte(user.Password)
+    // password := []byte(loginForm.Password)
+    // err = bcrypt.CompareHashAndPassword(hashedPassword, password)
+    err = user.Authenticate(loginForm.Password)
     checkErr(err, "Password match failed")
     err = sessionauth.AuthenticateSession(session, &user)
     if err != nil {
