@@ -2,7 +2,7 @@ package utils
 
 import (
 "github.com/zerobfd/mailbuilder"
-"github.com/bung87/usercenter/settings"
+"github.com/usercenter/usercenter/settings"
 )
 
 func mail(from, to mailbuilder.Address, subject, content string) {

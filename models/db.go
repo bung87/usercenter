@@ -3,8 +3,9 @@ package models
 import (
 	"database/sql"
 	"github.com/coopernurse/gorp"
-	// "github.com/bung87/usercenter/settings"
+	// "github.com/usercenter/usercenter/settings"
 )
+
 // var DbMap *gorp.DbMap
 // func init(){
 // 	InitDB(settings.Driver,settings.Source,settings.Dialect)
@@ -13,8 +14,8 @@ type DB struct {
 	*gorp.DbMap
 }
 
-func InitDB(driver string, source string, dialect gorp.Dialect) (*DB, error){
-	db,err := sql.Open(driver, source)
+func InitDB(driver string, source string, dialect gorp.Dialect) (*DB, error) {
+	db, err := sql.Open(driver, source)
 	if err != nil {
 		return nil, err
 	}
