@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/golang/crypto/bcrypt"
+	"github.com/usercenter/crypto/bcrypt"
 	"github.com/martini-contrib/sessionauth"
 	"github.com/usercenter/usercenter/settings"
 	"github.com/wayn3h0/go-uuid/random"
