@@ -22,17 +22,17 @@ function changeLang() {
         playAudio();
     }
 }
-function reload() {
+/*function reload() {
     setSrcQuery(document.getElementById('image'), "reload=" + (new Date()).getTime());
     setSrcQuery(document.getElementById('audio'), (new Date()).getTime());
     return false;
-}
+}*/
 var LoginModalController = {
     tabsElementName: ".logmod__tabs li",
     tabElementName: ".logmod__tab",
     inputElementsName: ".logmod__form .input",
     hidePasswordName: ".hide-password",
-    
+    captcha:'#captcha',
     inputElements: null,
     tabsElement: null,
     tabElement: null,
@@ -43,7 +43,7 @@ var LoginModalController = {
     
     findElements: function () {
         var base = this;
-        
+        base.captcha = $(base.captcha);
         base.tabsElement = $(base.tabsElementName);
         base.tabElement = $(base.tabElementName);
         base.inputElements = $(base.inputElementsName);
@@ -83,7 +83,9 @@ var LoginModalController = {
    
     addClickEvents: function () {
     	var base = this;
-        
+        base.captcha.on('click',function(e){
+             setSrcQuery(this, "reload=" + (new Date()).getTime());
+        });
         base.hidePassword.on("click", function (e) {
             var $this = $(this),
                 $pwInput = $this.prev("input");
