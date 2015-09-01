@@ -17,7 +17,7 @@ module.exports = function(grunt) {
         stripBanners: true
       },
       dist: {
-        src: ['src/js/<%= pkg.name %>.js'],
+        src: ['src/js/<%= pkg.name %>.js','public/js/venders.pkgd.js'],
         dest: 'public/js/<%= pkg.name %>.js'
       }
     },
@@ -51,7 +51,8 @@ module.exports = function(grunt) {
     bowercopy: {
       options: {
         // Bower components folder will be removed afterwards 
-        clean: false
+        clean: false,
+        ignore:['*.scss','*.less']
       },
     // Anything can be copied 
 
@@ -68,8 +69,9 @@ module.exports = function(grunt) {
 
         },
         plugins: {
-          options: {
-            destPrefix: 'public/plugins'
+          ignore:['**/*.scss','*.less'],
+          files:{
+            'public/fonts':'components-font-awesome/fonts'
           }
         },
 
@@ -81,6 +83,17 @@ module.exports = function(grunt) {
     },
 
   }
+  ,cssmin: {
+    options: {
+      shorthandCompacting: false,
+      roundingPrecision: -1
+    },
+    dist: {
+      files: {
+        'public/css/<%= pkg.name %>.min.css': ['<%= bower_concat.all.cssDest %>', 'src/css/style.css','bower_components/components-font-awesome/css/font-awesome.css']
+      }
+    }
+  }
 });
 
   // These plugins provide necessary tasks.
@@ -90,7 +103,8 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-bower-concat');
   grunt.loadNpmTasks('grunt-bowercopy');
+  grunt.loadNpmTasks('grunt-contrib-cssmin');
   // Default task.
-  grunt.registerTask('default', ['bower_concat:all','bowercopy:libs', 'concat', 'uglify']);
+  grunt.registerTask('default', ['bower_concat:all','bowercopy:libs','bowercopy:plugins', 'concat','cssmin:dist', 'uglify']);
 
 };

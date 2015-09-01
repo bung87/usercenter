@@ -85,7 +85,7 @@ func main() {
 			http.Error(w, "CSRF token validation failed", http.StatusBadRequest)
 		},
 	}))
-/*	m.Use(func(s sessions.Session, res http.ResponseWriter, req *http.Request) {
+	/*	m.Use(func(s sessions.Session, res http.ResponseWriter, req *http.Request) {
 		s.Set("userID", "123456")
 	})*/
 
@@ -123,16 +123,14 @@ func main() {
 
 		d := struct {
 			CaptchaId string
-			
 		}{
 			captcha.New(),
-			
 		}
 
 		r.HTML(200, "login", d)
 	})
 
-	m.Post("/login",  binding.Bind(forms.LoginForm{}), func(session sessions.Session, loginForm forms.LoginForm, r render.Render, req *http.Request, db *models.DB) {
+	m.Post("/login", binding.Bind(forms.LoginForm{}), func(session sessions.Session, loginForm forms.LoginForm, r render.Render, req *http.Request, db *models.DB) {
 		user := models.User{
 			Email: loginForm.Email,
 		}
@@ -151,7 +149,7 @@ func main() {
 		if err != nil {
 			r.JSON(500, err)
 		}
-		s.Set("userID", user.UniqueId())
+		session.Set("userID", user.UniqueId())
 		params := req.URL.Query()
 		redirect := params.Get(sessionauth.RedirectParam)
 		r.Redirect(redirect)
