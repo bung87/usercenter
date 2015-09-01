@@ -24,7 +24,7 @@ const (
 	CAPTCHA_LENGTH  = 6
 	CAPTCHA_WIDTH   = 180
 	CAPTCHA_HEIGHT  = 50
-	CAPTCHA_QUALITY = 90
+	CAPTCHA_QUALITY = 98
 )
 
 func DB() martini.Handler {
@@ -85,9 +85,9 @@ func main() {
 			http.Error(w, "CSRF token validation failed", http.StatusBadRequest)
 		},
 	}))
-	m.Use(func(s sessions.Session, res http.ResponseWriter, req *http.Request) {
+/*	m.Use(func(s sessions.Session, res http.ResponseWriter, req *http.Request) {
 		s.Set("userID", "123456")
-	})
+	})*/
 
 	m.Post("/signup", csrf.Validate, binding.Bind(forms.SignupForm{}), func(user sessionauth.User, res http.ResponseWriter, req *http.Request, signupForm forms.SignupForm, r render.Render, db *models.DB) {
 
@@ -119,19 +119,20 @@ func main() {
 		r.HTML(200, "user", newmap)
 	})
 
-	m.Get("/login", func(s sessions.Session, r render.Render, x csrf.CSRF) {
+	m.Get("/login", func(s sessions.Session, r render.Render) {
 
 		d := struct {
 			CaptchaId string
-			Token     string
-		}{x.GetToken(),
+			
+		}{
 			captcha.New(),
+			
 		}
 
 		r.HTML(200, "login", d)
 	})
 
-	m.Post("/login", csrf.Validate, binding.Bind(forms.LoginForm{}), func(session sessions.Session, loginForm forms.LoginForm, r render.Render, req *http.Request, db *models.DB) {
+	m.Post("/login",  binding.Bind(forms.LoginForm{}), func(session sessions.Session, loginForm forms.LoginForm, r render.Render, req *http.Request, db *models.DB) {
 		user := models.User{
 			Email: loginForm.Email,
 		}
@@ -150,6 +151,7 @@ func main() {
 		if err != nil {
 			r.JSON(500, err)
 		}
+		s.Set("userID", user.UniqueId())
 		params := req.URL.Query()
 		redirect := params.Get(sessionauth.RedirectParam)
 		r.Redirect(redirect)
